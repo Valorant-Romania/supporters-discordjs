@@ -147,6 +147,13 @@ module.exports = {
                     });
                 }
 
+                if(member.id === interaction.member.id) {
+                    return await interaction.reply({
+                        flags: MessageFlags.Ephemeral,
+                        content: "You can not target yourself with such commands!"
+                    });
+                }
+
                 // if the user is a valid member, check if the member is or isn't a member of the clan
                 try{
                     isClanMember = member.roles.cache.has(clanData[0].clanrole)
@@ -306,7 +313,7 @@ module.exports = {
                         embedClan
                     ]
                 });
-                
+
             break;
         }
 

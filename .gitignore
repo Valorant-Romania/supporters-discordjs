@@ -3,3 +3,5 @@ node_modules/
 nodemon_start.bat
 Commands/Supporter/test.js
 error_dumps/
+temp/
+backup-db/

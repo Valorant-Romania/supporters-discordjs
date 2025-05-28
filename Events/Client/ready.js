@@ -32,6 +32,13 @@ module.exports = {
         // checking and creating the error dump directory if needed
         const errorDumpDir = path.join(__dirname, '../../error_dumps');
         directoryCheck(errorDumpDir);
+        // creating a temporary files directory
+        const tempDir = path.join(__dirname, '../../temp'); // temp directory will be used to archive data, dump it and quickly dispose of it
+        // checking if the directory exists, if it doesn't then an error is thrown and the directory is created
+        directoryCheck(tempDir);
+
+        const backupDir = path.join(__dirname, '../../backup-db');
+        directoryCheck(backupDir);
 
 
         // keep it on the last line as confirmation when ready event finishes execution
