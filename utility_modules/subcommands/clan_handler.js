@@ -158,7 +158,7 @@ const clanObjBuilder = async (guild, member) => {
 
     if(clanData[0].textchannel) {
         try{
-            clanObj[0].textchannel = guild.channels.fetch(clanData[0].textchannel)
+            clanObj.textChannel = await guild.channels.fetch(clanData[0].textchannel)
         } catch(err) {};
     }
 
@@ -196,12 +196,12 @@ async function create_clan_button(interaction, message) {
         // creating the roles
         clanObj.clanRole = await interaction.guild.roles.create({
             name: clanObj.clanname,
-            position: supporterRole.position + 1 // placing above supporter role
+            position: 0 // placing above supporter role
         });
         
         clanObj.ownerRole = await interaction.guild.roles.create({
             name: clanObj.clanname,
-            position: clanObj.clanRole.position + 1 // placing the role above the clan role
+            position: supporterRole.position + 7 // placing the role above the clan role
         });
 
         try{
