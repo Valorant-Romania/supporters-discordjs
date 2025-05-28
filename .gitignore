@@ -2,3 +2,4 @@ node_modules/
 .env
 nodemon_start.bat
 Commands/Supporter/test.js
+error_dumps/

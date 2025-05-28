@@ -67,6 +67,7 @@ async function database_tables_setup() {
             id SERIAL PRIMARY KEY,
             guild BIGINT NOT NULL,
             owner BIGINT NOT NULL,
+            clanname TEXT NOT NULL,
             ownerrole BIGINT NOT NULL,
             clanrole BIGINT NOT NULL,
             voicechannel BIGINT,
