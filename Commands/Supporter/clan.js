@@ -15,39 +15,39 @@ module.exports = {
     cooldown: 10,
     data: new SlashCommandBuilder()
         .setName("clan")
-        .setDescription("Clan related subcommands.")
+        .setDescription("Comenzi legate de clan")
         .addSubcommand(subcommand =>
             subcommand.setName("menu")
-                .setDescription("Open your clan menu as a supporter")
+                .setDescription("Deschide meniul clanului ca supporter")
         )
         .addSubcommand(subcommand =>
             subcommand.setName("invite")
-                .setDescription("Invite another member to your clan.")
+                .setDescription("Invită un alt membru în clanul tău")
                 .addUserOption(option =>
                     option.setName("member")
-                        .setDescription("The member to be invited to your clan.")
+                        .setDescription("Membrul care să fie invitat")
                         .setRequired(true)
                 )
         )
         .addSubcommand(subcommand =>
             subcommand.setName("kick")
-                .setDescription("Kick one of your clan members.")
+                .setDescription("Scoate un membru din clan")
                 .addUserOption(option =>
                     option.setName("member")
-                        .setDescription("The clan member to be kicked out.")
+                        .setDescription("Membrul care să fie scos")
                         .setRequired(true)
                 )
         )
         .addSubcommand(subcommand =>
             subcommand.setName("leave")
-                .setDescription("Leave from one of your current clans.")
+                .setDescription("Ieși din unul dintre clanurile tale actuale")
         )
         .addSubcommand(subcommand =>
             subcommand.setName("details")
-                .setDescription("Details about a clan.")
+                .setDescription("Informatii despre un clan")
                 .addStringOption(option =>
                     option.setName("clan-name")
-                        .setDescription("The name of the clan you want details about.")
+                        .setDescription("Numele clanului despre care vrei detalii.")
                         .setRequired(true)
                         .setMaxLength(100)
                         .setMinLength(1)
@@ -78,7 +78,7 @@ module.exports = {
             // these commands require clan-admin set first
             return await interaction.reply({
                 flags: MessageFlags.Ephemeral,
-                content: "You can not use such commands yet, an admin needs to run `/clan-admin set` first!"
+                content: "Nu poți folosi astfel de comenzi încă, un administrator trebuie să ruleze mai întâi comanda `/clan-admin` set!"
             });
         }
 
@@ -91,7 +91,7 @@ module.exports = {
         } catch(err) {
             return await interaction.reply({
                 flags: MessageFlags.Ephemeral,
-                content: "Supporter role and/or category channel are faulty or no longer exist, ask an admin to set them up again!"
+                content: "Rolul de susținător și/sau canalul categoriei sunt defecte sau nu mai există. Roagă un administrator să le configureze din nou!"
             });
         }
 
@@ -103,8 +103,8 @@ module.exports = {
                     embeds: [
                         new EmbedBuilder()
                             .setColor("Red")
-                            .setTitle("You lack permission!")
-                            .setDescription(`These commands are for ${supporterRole} only!`)
+                            .setTitle("Nu ai permisiunile necesare!")
+                            .setDescription(`Aceste comenzi sunt doar pentru ${supporterRole}!`)
                     ]
                 });
             }
@@ -118,7 +118,7 @@ module.exports = {
                         embeds: [
                             new EmbedBuilder()
                                 .setColor("Red")
-                                .setTitle("You don't own a clan!")
+                                .setTitle("You don't own a clan! Nu ai un clan!")
                                 .setDescription("These commands require you to own a clan.")
                         ]
                     });

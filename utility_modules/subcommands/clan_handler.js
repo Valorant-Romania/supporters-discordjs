@@ -156,6 +156,7 @@ const clanObjBuilder = async (guild, member) => {
         } catch(err) {}
     }
 
+
     if(clanData[0].textchannel) {
         try{
             clanObj.textChannel = await guild.channels.fetch(clanData[0].textchannel)
@@ -390,7 +391,7 @@ async function modify_clan_button(interaction, message) {
         clanname: clanData[0].clanname,
         ownerRole: null,
         clanRole: null,
-        voice: null,
+        voiceChannel: null,
         textChannel: null
     }
 
@@ -416,14 +417,16 @@ async function modify_clan_button(interaction, message) {
 
     if(clanData[0].voicechannel) {
         try{
-            clanObj.voice = await interaction.guild.channels.fetch(clanData[0].voicechannel)
+            clanObj.voiceChannel = await interaction.guild.channels.fetch(clanData[0].voicechannel)
         } catch(err) {}
     }
 
     if(clanData[0].textchannel) {
         try{
-            clanObj[0].textchannel = await interaction.guild.channels.fetch(clanData[0].textchannel)
-        } catch(err) {};
+            clanObj.textChannel = await interaction.guild.channels.fetch(clanData[0].textchannel)
+        } catch(err) {
+          console.error(err)
+        };
     }
 
     // opening the modify menu where members can change or create new aspects about their roles and channels
@@ -438,7 +441,7 @@ async function modify_clan_button(interaction, message) {
     try{
         category = await interaction.guild.channels.fetch(categoryData[0].category);
     } catch(err) {
-        console.error(`The category supporter data si faulty\n${err}`);
+        console.error(`The category supporter data si faulty\n${err}`); // si senior
         return await interaction.editReply({
             content: "There is something wrong with the category data...."
         });
@@ -786,18 +789,18 @@ async function modify_clan_button(interaction, message) {
                     const textName = submit.fields.getTextInputValue("channel-name-input");
 
                     // if the channel exists, rename it, if not, create one
-                    if(clanObj.voice) {
-                        await clanObj.voicechannel.edit({
+                    if(clanObj.voiceChannel) {
+                        await clanObj.voiceChannel.edit({
                             name: textName
                         });
 
                         await submit.editReply({
                             flags: MessageFlags.Ephemeral,
-                            content: `Channel name changed ${clanObj.voicechannel}`
+                            content: `Channel name changed ${clanObj.voiceChannel}`
                         });
                     } else {
                         // creating the channel
-                        clanObj.voice = await category.children.create({
+                        clanObj.voiceChannel = await category.children.create({
                             name: textName,
                             type: ChannelType.GuildVoice,
                             permissionOverwrites: [
@@ -830,11 +833,11 @@ async function modify_clan_button(interaction, message) {
 
                         // register the channel in the database
                         await poolConnection.query(`UPDATE clan SET voicechannel=$1 WHERE guild=$2 AND owner=$3`,
-                            [clanObj.voice.id, interaction.guild.id, interaction.user.id]
+                            [clanObj.voiceChannel.id, interaction.guild.id, interaction.user.id]
                         );
 
                         await submit.editReply({
-                            content: `Channel created ${clanObj.voice}`
+                            content: `Channel created ${clanObj.voiceChannel}`
                         });
 
                     }
@@ -975,7 +978,9 @@ async function main_menu(interaction, owner) {
         if(clanOwnerData[0].textchannel) {
             try{
                 textChannel = await owner.guild.channels.fetch(clanOwnerData[0].textchannel);
-            } catch(err) {};
+            } catch(err) {
+              console.error(err)
+            };
 
             clanObj.textChannel = textChannel
         }
