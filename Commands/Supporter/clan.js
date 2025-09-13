@@ -8,8 +8,8 @@ const {
 
 } = require("discord.js");
 
-const {poolConnection} = require("../../utility_modules/kayle-db.js");
-const {main_menu, send_invite, clanObjBuilder, clanEmbedBuilder} = require("../../utility_modules/subcommands/clan_handler.js");
+const { poolConnection } = require("../../utility_modules/kayle-db.js");
+const { main_menu, send_invite, clanObjBuilder, clanEmbedBuilder } = require("../../utility_modules/subcommands/clan_handler.js");
 
 module.exports = {
     cooldown: 10,
@@ -66,15 +66,15 @@ module.exports = {
         let member = null;
         let isClanMember = false;
 
-        const {rows: clanSystemData} = await poolConnection.query(`SELECT * FROM clansystem WHERE guild=$1`,
+        const { rows: clanSystemData } = await poolConnection.query(`SELECT * FROM clansystem WHERE guild=$1`,
             [interaction.guild.id]
         );
 
-        const {rows: clanData} = await poolConnection.query(`SELECT * FROM clan WHERE guild=$1 AND owner=$2`,
+        const { rows: clanData } = await poolConnection.query(`SELECT * FROM clan WHERE guild=$1 AND owner=$2`,
             [interaction.guild.id, interaction.user.id]
         );
 
-        if(clanSystemData.length == 0) {
+        if (clanSystemData.length == 0) {
             // these commands require clan-admin set first
             return await interaction.reply({
                 flags: MessageFlags.Ephemeral,
@@ -85,19 +85,19 @@ module.exports = {
         // checking if the role and category are valid
         let supporterRole = null;
         let categoryChannel = null;
-        try{
+        try {
             supporterRole = await interaction.guild.roles.fetch(clanSystemData[0].role);
             categoryChannel = await interaction.guild.channels.fetch(clanSystemData[0].category);
-        } catch(err) {
+        } catch (err) {
             return await interaction.reply({
                 flags: MessageFlags.Ephemeral,
                 content: "Rolul de susținător și/sau canalul categoriei sunt defecte sau nu mai există. Roagă un administrator să le configureze din nou!"
             });
         }
 
-        if(cmd != "leave" && cmd != "details") {
+        if (cmd != "leave" && cmd != "details") {
             // checking perms for supporter specific commands
-            if(!interaction.member.roles.cache.has(supporterRole.id)) {
+            if (!interaction.member.roles.cache.has(supporterRole.id)) {
                 return await interaction.reply({
                     flags: MessageFlags.Ephemeral,
                     embeds: [
@@ -109,10 +109,10 @@ module.exports = {
                 });
             }
 
-            if(cmd != "menu") {
+            if (cmd != "menu") {
                 // kick and invite can not be ran if the user does not own a clan yet
 
-                if(clanData.length == 0) {
+                if (clanData.length == 0) {
                     return await interaction.reply({
                         flags: MessageFlags.Ephemeral,
                         embeds: [
@@ -125,9 +125,9 @@ module.exports = {
                 }
 
                 // check if the user provided for kick/invite is a valid member of this server
-                try{
+                try {
                     member = await interaction.guild.members.fetch(user.id);
-                } catch(err) {
+                } catch (err) {
                     return await interaction.reply({
                         flags: MessageFlags.Ephemeral,
                         embeds: [
@@ -140,14 +140,14 @@ module.exports = {
                 }
 
                 // no bots allowed
-                if(member.user.bot) {
+                if (member.user.bot) {
                     return await interaction.reply({
                         flags: MessageFlags.Ephemeral,
                         content: "You can not use such commands on bots!"
                     });
                 }
 
-                if(member.id === interaction.member.id) {
+                if (member.id === interaction.member.id) {
                     return await interaction.reply({
                         flags: MessageFlags.Ephemeral,
                         content: "You can not target yourself with such commands!"
@@ -155,55 +155,59 @@ module.exports = {
                 }
 
                 // if the user is a valid member, check if the member is or isn't a member of the clan
-                try{
+                try {
                     isClanMember = member.roles.cache.has(clanData[0].clanrole)
-                } catch(err) {};
+                } catch (err) { };
             }
         }
 
-        switch(cmd) {
+        switch (cmd) {
             case "menu":
                 await main_menu(interaction, interaction.member);
-            break;
+                break;
             case "invite":
-                if(isClanMember) {
+                if (isClanMember) {
                     return await interaction.reply({
                         flags: MessageFlags.Ephemeral,
                         content: "You can not invite someone that is already in your clan!"
                     });
                 }
                 await send_invite(interaction, interaction.member, member);
-            break;
+                break;
             case "kick":
-                if(!isClanMember) {
+                if (!isClanMember) {
                     return await interaction.reply({
                         flags: MessageFlags.Ephemeral,
                         content: "You can not kick someone that is not in your clan!"
                     });
                 }
 
-                await member.roles.remove(clanData[0].clanrole);
+                const { rows: clanRoleData } = await poolConnection.query(`SELECT clanrole FROM clan WHERE guild=$1 AND owner=$2`,
+                    [interaction.guild.id, interaction.user.id]
+                );
+
+                await member.roles.remove(clanRoleData[0].clanrole);
                 await interaction.reply({
                     flags: MessageFlags.Ephemeral,
                     content: `You kicked ${member} out of your clan!`
                 });
 
-            break;
+                break;
             case "leave":
-                const leaveReply = await interaction.deferReply({flags: MessageFlags.Ephemeral});
+                const leaveReply = await interaction.deferReply({ flags: MessageFlags.Ephemeral });
                 const leaveFetchedReply = await interaction.fetchReply();
 
                 const roleIds = interaction.member.roles.cache.map(role => role.id);
 
                 // fetching all rows that match member roles with clan roles
                 // this is how the bot will know which roles are clan roles
-                const {rows: matchingClansData} = await poolConnection.query(`SELECT clanname, clanrole FROM clan
+                const { rows: matchingClansData } = await poolConnection.query(`SELECT clanname, clanrole FROM clan
                     WHERE guild=$1
                         AND clanrole = ANY($2::bigint[])`,
-                    [interaction.guild.id, roleIds]    
+                    [interaction.guild.id, roleIds]
                 );
 
-                if(matchingClansData.length == 0) {
+                if (matchingClansData.length == 0) {
                     return await interaction.editReply({
                         embeds: [
                             new EmbedBuilder()
@@ -217,7 +221,7 @@ module.exports = {
                 // preparing select menu options
                 const selectOptions = [];
 
-                for(const row of matchingClansData) {
+                for (const row of matchingClansData) {
                     selectOptions.push(
                         {
                             label: row.clanname,
@@ -248,11 +252,11 @@ module.exports = {
                 });
 
                 selectCollector.on("collect", async (selectInteraction) => {
-                    if(!selectInteraction.isStringSelectMenu) return;
-                    for(const roleid of selectInteraction.values) {
-                        try{
+                    if (!selectInteraction.isStringSelectMenu) return;
+                    for (const roleid of selectInteraction.values) {
+                        try {
                             await interaction.member.roles.remove(roleid);
-                        } catch(err) {};
+                        } catch (err) { };
                     }
 
                     await selectInteraction.reply({
@@ -262,19 +266,19 @@ module.exports = {
                 });
 
                 selectCollector.on("end", async () => {
-                    try{
+                    try {
                         await leaveReply.delete()
-                    } catch(err) {};
+                    } catch (err) { };
                 });
-                
-            break;
+
+                break;
             case "details":
                 const clanName = interaction.options.getString("clan-name");
-                const {rows: clanData} = await poolConnection.query(`SELECT owner FROM clan WHERE guild=$1 AND clanname=$2`,
+                const { rows: clanData } = await poolConnection.query(`SELECT owner FROM clan WHERE guild=$1 AND clanname=$2`,
                     [interaction.guild.id, clanName]
                 );
 
-                if(clanData.length == 0) {
+                if (clanData.length == 0) {
                     return await interaction.reply({
                         flags: MessageFlags.Ephemeral,
                         embeds: [
@@ -288,9 +292,9 @@ module.exports = {
 
                 let ownerMember = null;
 
-                try{
+                try {
                     ownerMember = await interaction.guild.members.fetch(clanData[0].owner);
-                } catch(err) {
+                } catch (err) {
                     console.error(`Owner is no longer a member: ${clanData[0].owner}\n${err}`);
                     return await interaction.reply({
                         flags: MessageFlags.Ephemeral,
@@ -300,7 +304,7 @@ module.exports = {
 
                 const clanObj = await clanObjBuilder(interaction.guild, ownerMember);
                 let embedClan = null;
-                if(clanObj)
+                if (clanObj)
                     embedClan = clanEmbedBuilder(clanObj)
                 else
                     return await interaction.reply({
@@ -314,7 +318,7 @@ module.exports = {
                     ]
                 });
 
-            break;
+                break;
         }
 
     }
