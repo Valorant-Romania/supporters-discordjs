@@ -50,6 +50,56 @@ const {
 } = require("./database.js");
 const { hasCooldown } = require("./utility_methods.js");
 
+function buildStaffPermissionSets(guild = null) {
+    const envValue = process.env.CLAN_VIEWER_ROLE_IDS || '';
+
+    const rawRoleIds = envValue
+        .split(',')
+        .map((id) => id.trim())
+        .filter((id) => id.length > 0);
+
+    const numericRoleIds = rawRoleIds.filter((id) => /^\d{17,20}$/.test(id));
+    const malformedIds = rawRoleIds.filter((id) => id.length > 0 && !/^\d{17,20}$/.test(id));
+
+    if (malformedIds.length) {
+        console.warn('[ClanStaff] Skipping malformed CLAN_VIEWER_ROLE_IDS entries:', malformedIds);
+    }
+
+    const roleIds = guild
+        ? numericRoleIds.filter((roleId) => {
+            const exists = guild.roles.cache.has(roleId);
+            if (!exists) {
+                console.warn(`[ClanStaff] Skipping unknown staff role ID ${roleId} in guild ${guild.id}`);
+            }
+            return exists;
+        })
+        : numericRoleIds;
+
+    return {
+        ids: roleIds,
+        text: roleIds.map((roleId) => ({
+            id: roleId,
+            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory]
+        })),
+        voice: roleIds.map((roleId) => ({
+            id: roleId,
+            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect]
+        }))
+    };
+}
+
+async function ensureStaffAccess(channel, roleIds, permissions, contextLabel) {
+    if (!channel || !roleIds.length) return;
+
+    await Promise.all(roleIds.map(async (roleId) => {
+        try {
+            await channel.permissionOverwrites.edit(roleId, permissions);
+        } catch (err) {
+            console.error(`Failed to ensure staff access for ${contextLabel} (role ${roleId}):`, err);
+        }
+    }));
+}
+
 // buttons
 const createClan = new ButtonBuilder()
     .setCustomId("create-clan")
@@ -263,6 +313,8 @@ async function create_clan_button(interaction, message) {
             });
         }
 
+        const staffPermissionSets = buildStaffPermissionSets(interaction.guild);
+
         // create Canal text
         clanObj.textChannel = await category.children.create({
             name: `${clanObj.clanname}-text`,
@@ -279,14 +331,16 @@ async function create_clan_button(interaction, message) {
                 {
                     id: clanObj.ownerRole.id,
                     allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ManageChannels]
-                }
+                },
+                ...staffPermissionSets.text
             ]
         });
+        await ensureStaffAccess(clanObj.textChannel, staffPermissionSets.ids, { ViewChannel: true, ReadMessageHistory: true }, 'clan text channel creation');
 
         // create Canal voce
-        		clanObj.voice = await category.children.create({
-			name: `${clanObj.clanname}-voice`,
-			type: ChannelType.GuildVoice,
+        clanObj.voice = await category.children.create({
+            name: `${clanObj.clanname}-voice`,
+            type: ChannelType.GuildVoice,
             permissionOverwrites: [
                 {
                     id: interaction.guild.roles.everyone.id,
@@ -299,9 +353,11 @@ async function create_clan_button(interaction, message) {
                 {
                     id: clanObj.ownerRole.id,
                     allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ManageChannels, PermissionFlagsBits.Connect]
-                }
+                },
+                ...staffPermissionSets.voice
             ]
         });
+        await ensureStaffAccess(clanObj.voice, staffPermissionSets.ids, { ViewChannel: true, Connect: true }, 'clan voice channel creation');
 
         // registering the new clan
         await dbCreateClan(interaction.guild.id, interaction.user.id, clanObj.clanname, clanObj.ownerRole.id, clanObj.clanRole.id, clanObj.textChannel.id, clanObj.voice.id);
@@ -532,6 +588,8 @@ async function modify_clan_button(interaction, message) {
             content: "Exista o problema cu datele categoriei..."
         });
     }
+
+    const staffPermissionSets = buildStaffPermissionSets(interaction.guild);
 
     // buttons
 
@@ -809,6 +867,7 @@ async function modify_clan_button(interaction, message) {
                         await clanObj.textChannel.edit({
                             name: textName
                         });
+                        await ensureStaffAccess(clanObj.textChannel, staffPermissionSets.ids, { ViewChannel: true, ReadMessageHistory: true }, 'updated clan text channel');
 
                         await submit.editReply({
                             flags: MessageFlags.Ephemeral,
@@ -839,9 +898,11 @@ async function modify_clan_button(interaction, message) {
                                         PermissionFlagsBits.ViewChannel,
                                         PermissionFlagsBits.SendMessages
                                     ]
-                                }
+                                },
+                                ...staffPermissionSets.text
                             ]
                         });
+                        await ensureStaffAccess(clanObj.textChannel, staffPermissionSets.ids, { ViewChannel: true, ReadMessageHistory: true }, 'new clan text channel');
 
                         // register the channel in the database
                         await updateClanTextChannel(interaction.guild.id, interaction.user.id, clanObj.textChannel.id);
@@ -918,7 +979,8 @@ async function modify_clan_button(interaction, message) {
                                         PermissionFlagsBits.SendMessages,
                                         PermissionFlagsBits.Connect
                                     ]
-                                }
+                                },
+                                ...staffPermissionSets.voice
                             ]
                         });
 
@@ -1328,7 +1390,6 @@ module.exports = {
     main_menu_collector,
     send_invite,
     clanObjBuilder,
-    clanEmbedBuilder
+    clanEmbedBuilder,
+    buildStaffPermissionSets
 }
-
-

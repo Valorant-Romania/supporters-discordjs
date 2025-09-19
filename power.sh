@@ -81,10 +81,9 @@ EOF
 BOT_TOKEN=discord_bot_token_here
 CLIENT_ID=YOUR_BOT_CLIENT_ID_HERE
 HOME_SERVER_ID=YOUR_DISCORD_SERVER_ID_HERE
-
-# Bot Owner & Logging
-OWNER=id_of_bot_owner
+# Logging
 ERROR_LOG_CHANNEL_ID=error_log_channel_id_here
+CLAN_VIEWER_ROLE_IDS=role_id_1,role_id_2 
 
 # MySQL Database Connection
 DBHOST=localhost

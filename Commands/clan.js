@@ -19,7 +19,7 @@ const {
     updateClanTextChannel,
     updateClanVoiceChannel
 } = require("../database.js");
-const { main_menu, send_invite, clanObjBuilder, clanEmbedBuilder } = require("../clan_handler.js");
+const { main_menu, send_invite, clanObjBuilder, clanEmbedBuilder, buildStaffPermissionSets } = require("../clan_handler.js");
 
 module.exports = {
     cooldown: 10,
@@ -379,6 +379,9 @@ module.exports = {
                     return await interaction.editReply({ content: "A aparut o eroare la preluarea datelor clanului." });
                 }
 
+                // Build staff viewer permissions from env so staff can see recreated channels
+                const staffPermissionSets = buildStaffPermissionSets(interaction.guild);
+
                 const categoryData = await getClanSystem(interaction.guild.id);
                 let category;
                 try {
@@ -397,7 +400,8 @@ module.exports = {
                         permissionOverwrites: [
                             { id: interaction.guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
                             { id: clanObj.clanRole.id, allow: [PermissionFlagsBits.ViewChannel] },
-                            { id: clanObj.ownerRole.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ManageChannels] }
+                            { id: clanObj.ownerRole.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ManageChannels] },
+                            ...staffPermissionSets.text
                         ]
                     });
                     await updateClanTextChannel(interaction.guild.id, interaction.user.id, newTextChannel.id);
@@ -413,7 +417,8 @@ module.exports = {
                         permissionOverwrites: [
                             { id: interaction.guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
                             { id: clanObj.clanRole.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.Connect] },
-                            { id: clanObj.ownerRole.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ManageChannels, PermissionFlagsBits.Connect] }
+                            { id: clanObj.ownerRole.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ManageChannels, PermissionFlagsBits.Connect] },
+                            ...staffPermissionSets.voice
                         ]
                     });
                     await updateClanVoiceChannel(interaction.guild.id, interaction.user.id, newVoiceChannel.id);
@@ -428,8 +433,5 @@ module.exports = {
                 break;
             }
         }
-
     }
 }
-
-

@@ -173,14 +173,6 @@ async function main() {
 					return;
 				}
 
-				if (command.ownerOnly === true && interaction.user.id !== process.env.OWNER) {
-					const rEmbed = new EmbedBuilder()
-						.setColor('Red')
-						.setTitle('Eroare')
-						.setDescription('Aceasta comanda necesita privilegii de Master.');
-					await interaction.reply({ embeds: [rEmbed], flags: MessageFlags.Ephemeral });
-					return;
-				}
 
 				if (command.userPermissions?.length) {
 					for (const permission of command.userPermissions) {
