@@ -1,5 +1,5 @@
 const { config } = require('dotenv');
-config(); // Make sure config is called before Sentry is required
+config(); 
 
 const Sentry = require('@sentry/node');
 const { Client, GatewayIntentBits, Routes, Partials, Collection, ChannelType, EmbedBuilder, MessageFlags } = require('discord.js');
@@ -268,3 +268,4 @@ async function main() {
 main();
 
 module.exports = { client };
+
