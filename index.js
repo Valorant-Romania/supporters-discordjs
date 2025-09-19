@@ -1,4 +1,7 @@
 const { config } = require('dotenv');
+config(); // Make sure config is called before Sentry is required
+
+const Sentry = require('@sentry/node');
 const { Client, GatewayIntentBits, Routes, Partials, Collection, ChannelType, EmbedBuilder, MessageFlags } = require('discord.js');
 const { REST } = require('@discordjs/rest');
 const winston = require('winston');
@@ -9,6 +12,17 @@ const { database_tables_setup, isClanSystemCategory, deleteClanSystemByCategory,
 const { logError } = require('./error_handler.js');
 
 config();
+
+// Sentry Initialization
+if (process.env.SENTRY_DSN) {
+	Sentry.init({
+		dsn: process.env.SENTRY_DSN,
+		tracesSampleRate: 1.0, 
+		release: `supporters-bot@${require('./package.json').version}`, 
+	});
+	console.log("Sentry has been initialized.");
+}
+
 
 // Eroare Logger Setup
 const error_logger = winston.createLogger({
