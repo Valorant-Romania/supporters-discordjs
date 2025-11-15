@@ -3,3 +3,4 @@ node_modules/
 temp/
 backup-db/
 logs/
+package-lock.json
