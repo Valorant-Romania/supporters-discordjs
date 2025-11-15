@@ -136,6 +136,145 @@ function timestamp_seconds(time = null) {
     return Math.floor(time / 1000);
 }
 
+/**
+ * Checks if the bot can manage a role for a target member.
+ * Returns an object with success status and error message if applicable.
+ * @param {GuildMember} botMember - The bot's guild member object
+ * @param {GuildMember} targetMember - The member to check against
+ * @param {Role} role - The role to be added/removed
+ * @returns {{canManage: boolean, reason: string|null}}
+ */
+function canBotManageRole(botMember, targetMember, role) {
+    // Check if bot's highest role is higher than the target member's highest role
+    const botHighestRole = botMember.roles.highest;
+    const targetHighestRole = targetMember.roles.highest;
+    
+    // Check if bot's highest role is higher than the role to be managed
+    if (botHighestRole.position <= role.position) {
+        return {
+            canManage: false,
+            reason: 'BOT_ROLE_TOO_LOW_FOR_ROLE'
+        };
+    }
+    
+    // Check if bot can manage the target member
+    if (botHighestRole.position <= targetHighestRole.position) {
+        return {
+            canManage: false,
+            reason: 'TARGET_ROLE_TOO_HIGH'
+        };
+    }
+    
+    return { canManage: true, reason: null };
+}
+
+/**
+ * Safely adds a role to a member with proper error handling for hierarchy issues.
+ * @param {GuildMember} member - The member to add the role to
+ * @param {Role} role - The role to add
+ * @param {GuildMember} botMember - The bot's guild member object
+ * @returns {Promise<{success: boolean, error: string|null}>}
+ */
+async function safeRoleAdd(member, role, botMember) {
+    try {
+        const check = canBotManageRole(botMember, member, role);
+        if (!check.canManage) {
+            return {
+                success: false,
+                error: check.reason
+            };
+        }
+        
+        await member.roles.add(role);
+        return { success: true, error: null };
+    } catch (err) {
+        console.error(`Failed to add role ${role.id} to member ${member.id}:`, err);
+        
+        // Check for specific Discord API errors
+        if (err.code === 50013) {
+            return {
+                success: false,
+                error: 'MISSING_PERMISSIONS'
+            };
+        }
+        
+        return {
+            success: false,
+            error: 'UNKNOWN_ERROR'
+        };
+    }
+}
+
+/**
+ * Safely removes a role from a member with proper error handling for hierarchy issues.
+ * @param {GuildMember} member - The member to remove the role from
+ * @param {Role|string} role - The role or role ID to remove
+ * @param {GuildMember} botMember - The bot's guild member object
+ * @returns {Promise<{success: boolean, error: string|null}>}
+ */
+async function safeRoleRemove(member, role, botMember) {
+    try {
+        // If role is a string (ID), fetch the role object
+        let roleObj = role;
+        if (typeof role === 'string') {
+            roleObj = await member.guild.roles.fetch(role);
+            if (!roleObj) {
+                return {
+                    success: false,
+                    error: 'ROLE_NOT_FOUND'
+                };
+            }
+        }
+        
+        const check = canBotManageRole(botMember, member, roleObj);
+        if (!check.canManage) {
+            return {
+                success: false,
+                error: check.reason
+            };
+        }
+        
+        await member.roles.remove(role);
+        return { success: true, error: null };
+    } catch (err) {
+        console.error(`Failed to remove role ${role} from member ${member.id}:`, err);
+        
+        // Check for specific Discord API errors
+        if (err.code === 50013) {
+            return {
+                success: false,
+                error: 'MISSING_PERMISSIONS'
+            };
+        }
+        
+        return {
+            success: false,
+            error: 'UNKNOWN_ERROR'
+        };
+    }
+}
+
+/**
+ * Gets a user-friendly error message for role hierarchy issues.
+ * @param {string} errorCode - The error code from safe role operations
+ * @param {GuildMember} member - The member involved in the operation
+ * @returns {string} User-friendly error message in Romanian
+ */
+function getRoleHierarchyErrorMessage(errorCode, member) {
+    switch (errorCode) {
+        case 'TARGET_ROLE_TOO_HIGH':
+            return `<:wrong:1418383815696449680> Nu pot gestiona rolul pentru ${member} deoarece rolul lor este mai sus decât rolul meu în ierarhia serverului. Te rog cere unui administrator să mute rolul meu mai sus în ierarhie.`;
+        case 'BOT_ROLE_TOO_LOW_FOR_ROLE':
+            return `<:wrong:1418383815696449680> Nu pot gestiona acest rol deoarece rolul meu este prea jos în ierarhia serverului. Te rog cere unui administrator să mute rolul meu mai sus în ierarhie.`;
+        case 'MISSING_PERMISSIONS':
+            return `<:wrong:1418383815696449680> Nu am permisiunile necesare pentru a gestiona acest rol. Te rog verifică permisiunile mele.`;
+        case 'ROLE_NOT_FOUND':
+            return `<:wrong:1418383815696449680> Rolul nu a fost găsit.`;
+        default:
+            return `<:wrong:1418383815696449680> A apărut o eroare neașteptată la gestionarea rolului.`;
+    }
+}
+
 
 module.exports = {
     timestamp_seconds,
@@ -149,5 +288,9 @@ module.exports = {
     memberPermsCheckInChannel,
     doesTableExists,
     handleFetchFile,
-    isAlphanumeric
+    isAlphanumeric,
+    canBotManageRole,
+    safeRoleAdd,
+    safeRoleRemove,
+    getRoleHierarchyErrorMessage
 };
