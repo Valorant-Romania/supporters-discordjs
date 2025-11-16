@@ -48,7 +48,7 @@ const {
     updateClanVoiceChannel,
     updateClanOwner
 } = require("./database.js");
-const { hasCooldown, getBotMember, safeRoleAdd, safeRoleRemove, getRoleHierarchyErrorMessage } = require("./utility_methods.js");
+const { hasCooldown } = require("./utility_methods.js");
 
 function buildStaffPermissionSets(guild = null) {
     const envValue = process.env.CLAN_VIEWER_ROLE_IDS || '';
@@ -293,21 +293,12 @@ async function create_clan_button(interaction, message) {
             position: supporterRole.position + 7 // placing the role above the clan role
         });
 
-        const botMember = getBotMember(interaction.client, interaction);
-        const addResult = await safeRoleAdd(interaction.member, clanObj.ownerRole, botMember);
-        
-        if (!addResult.success) {
-            // Clean up the created roles if we can't assign them
-            try {
-                await clanObj.ownerRole.delete();
-                await clanObj.clanRole.delete();
-            } catch (cleanupErr) {
-                console.error('Failed to clean up roles after assignment failure:', cleanupErr);
-            }
-            
-            const errorMessage = getRoleHierarchyErrorMessage(addResult.error, interaction.member);
+        try{
+            await interaction.member.roles.add(clanObj.ownerRole); // assigning the owner role
+        } catch(err) {
+            console.error(`An error occurred while assigning owner role to a member\n${err}`);
             return await submit.editReply({
-                content: errorMessage
+                content: "Rolul a fost creat, dar se pare ca rolul meu este prea jos.\nConfiguratie gresita."
             });
         }
 
@@ -1087,49 +1078,11 @@ async function modify_clan_button(interaction, message) {
                         });
                     }
 
-                    // Perform the transfer with safe role operations
-                    const botMember = getBotMember(interaction.client, interaction);
-                    
-                    // Add owner role to new owner
-                    const addOwnerResult = await safeRoleAdd(newOwnerMember, clanObj.ownerRole, botMember);
-                    if (!addOwnerResult.success) {
-                        const errorMessage = getRoleHierarchyErrorMessage(addOwnerResult.error, newOwnerMember);
-                        return await buttonInteraction.editReply({
-                            content: errorMessage,
-                            components: []
-                        });
-                    }
-                    
-                    // Remove clan role from new owner
-                    const removeClanResult = await safeRoleRemove(newOwnerMember, clanObj.clanRole, botMember);
-                    if (!removeClanResult.success) {
-                        // Rollback: remove owner role we just added
-                        await safeRoleRemove(newOwnerMember, clanObj.ownerRole, botMember);
-                        const errorMessage = getRoleHierarchyErrorMessage(removeClanResult.error, newOwnerMember);
-                        return await buttonInteraction.editReply({
-                            content: errorMessage,
-                            components: []
-                        });
-                    }
-                    
-                    // Remove owner role from current owner
-                    const removeOwnerResult = await safeRoleRemove(interaction.member, clanObj.ownerRole, botMember);
-                    if (!removeOwnerResult.success) {
-                        // Try to rollback the changes
-                        await safeRoleAdd(newOwnerMember, clanObj.clanRole, botMember);
-                        await safeRoleRemove(newOwnerMember, clanObj.ownerRole, botMember);
-                        const errorMessage = getRoleHierarchyErrorMessage(removeOwnerResult.error, interaction.member);
-                        return await buttonInteraction.editReply({
-                            content: errorMessage,
-                            components: []
-                        });
-                    }
-                    
-                    // Add clan role to current owner
-                    const addClanResult = await safeRoleAdd(interaction.member, clanObj.clanRole, botMember);
-                    if (!addClanResult.success) {
-                        console.error('Failed to add clan role to former owner, but transfer is proceeding');
-                    }
+                    // Perform the transfer
+                    await newOwnerMember.roles.add(clanObj.ownerRole);
+                    await newOwnerMember.roles.remove(clanObj.clanRole);
+                    await interaction.member.roles.remove(clanObj.ownerRole);
+                    await interaction.member.roles.add(clanObj.clanRole);
 
                     await updateClanOwner(interaction.guild.id, interaction.user.id, newOwnerMember.id);
 
@@ -1364,16 +1317,15 @@ async function send_invite(interaction, owner, member) {
         await buttonInteraction.deferUpdate();
 
         if (buttonInteraction.customId == "confirm-invite") {
-            const botMember = getBotMember(interaction.client, interaction);
-            const addResult = await safeRoleAdd(member, clanObj.clanRole, botMember);
-            
-            if (!addResult.success) {
-                const errorMessage = getRoleHierarchyErrorMessage(addResult.error, member);
+            try {
+                await member.roles.add(clanObj.clanRole);
+            } catch (err) {
+                console.error('Failed to assign the clan role to the new member:', err);
                 const errorEmbed = new EmbedBuilder()
                     .setColor("Red")
-                    .setDescription(errorMessage);
-                await safeMessageEdit(dmMessage, { embeds: [errorEmbed], components: [], content: null });
-                return;
+                    .setDescription("<:warning:1418383824143777922> A apărut o eroare la acordarea rolului de clan. Te rugăm contactează un developer.");
+                 await safeMessageEdit(dmMessage, { embeds: [errorEmbed], components: [], content: null });
+                 return;
             }
 
             const acceptedEmbed = new EmbedBuilder()

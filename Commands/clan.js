@@ -20,7 +20,6 @@ const {
     updateClanVoiceChannel
 } = require("../database.js");
 const { main_menu, send_invite, clanObjBuilder, clanEmbedBuilder, buildStaffPermissionSets } = require("../clan_handler.js");
-const { getBotMember, safeRoleRemove, getRoleHierarchyErrorMessage } = require("../utility_methods.js");
 
 module.exports = {
     cooldown: 10,
@@ -217,16 +216,7 @@ module.exports = {
                 }
 
                 const clanRoleRows = await getClanRoleByOwner(interaction.guild.id, interaction.user.id);
-                const botMember = getBotMember(interaction.client, interaction);
-                const removeResult = await safeRoleRemove(member, clanRoleRows[0].clanrole, botMember);
-
-                if (!removeResult.success) {
-                    const errorMessage = getRoleHierarchyErrorMessage(removeResult.error, member);
-                    return await interaction.reply({
-                        flags: MessageFlags.Ephemeral,
-                        content: errorMessage
-                    });
-                }
+                await member.roles.remove(clanRoleRows[0].clanrole);
 
                 const kickEmbed = new EmbedBuilder()
                     .setColor("Green")
@@ -280,42 +270,13 @@ module.exports = {
 
                     selectCollector.on("collect", async (selectInteraction) => {
                         if (!selectInteraction.isStringSelectMenu()) return;
-                        
-                        const botMember = getBotMember(interaction.client, interaction);
-                        const failedRoles = [];
-                        
-                        // Try to remove each role individually to handle failures gracefully
-                        for (const roleId of selectInteraction.values) {
-                            const removeResult = await safeRoleRemove(interaction.member, roleId, botMember);
-                            if (!removeResult.success) {
-                                failedRoles.push(roleId);
-                            }
-                        }
-                        
-                        if (failedRoles.length > 0) {
-                            // Some roles couldn't be removed
-                            if (failedRoles.length === selectInteraction.values.length) {
-                                // All failed
-                                const errorMessage = getRoleHierarchyErrorMessage('TARGET_ROLE_TOO_HIGH', interaction.member);
-                                const errorEmbed = new EmbedBuilder()
-                                    .setColor("Red")
-                                    .setDescription(errorMessage);
-                                await selectInteraction.update({ embeds: [errorEmbed], components: [], content: null });
-                            } else {
-                                // Partial success
-                                const warningEmbed = new EmbedBuilder()
-                                    .setColor("Yellow")
-                                    .setDescription("<:warning:1418383824143777922> Ai parasit unele clanuri, dar altele nu au putut fi procesate din cauza ierarhiei rolurilor. Contacteaza un administrator.");
-                                await selectInteraction.update({ embeds: [warningEmbed], components: [], content: null });
-                            }
-                        } else {
-                            // All succeeded
-                            const successEmbed = new EmbedBuilder()
-                                .setColor("Green")
-                                .setDescription("<:Correct:1418383811422457887> Ai parasit cu succes clanurile selectate.");
-                            await selectInteraction.update({ embeds: [successEmbed], components: [], content: null });
-                        }
-                        
+                        await interaction.member.roles.remove(selectInteraction.values);
+
+                        const successEmbed = new EmbedBuilder()
+                            .setColor("Green")
+                            .setDescription("<:Correct:1418383811422457887> Ai parasit cu succes clanurile selectate.");
+
+                        await selectInteraction.update({ embeds: [successEmbed], components: [], content: null });
                         selectCollector.stop();
                     });
 
