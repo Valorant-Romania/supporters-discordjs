@@ -276,6 +276,14 @@ async function create_clan_button(interaction, message) {
 
         await submit.deferReply({flags: MessageFlags.Ephemeral});
 
+        const botMember = await interaction.guild.members.fetchMe();
+        if (!botMember.roles.highest) {
+            return await submit.editReply({
+                content: "Eroare critica: Bot-ul nu are niciun rol si nu poate gestiona roluri. Contacteaza un administrator."
+            });
+        }
+        const botRolePosition = botMember.roles.highest.position;
+
         // initializing the object for the embed update
         const clanObj = {
             owner: interaction.member,
@@ -283,15 +291,29 @@ async function create_clan_button(interaction, message) {
         }
 
         // creating the roles
-        clanObj.clanRole = await interaction.guild.roles.create({
-            name: clanObj.clanname,
-            position: 0 // placing above supporter role
-        });
-        
         clanObj.ownerRole = await interaction.guild.roles.create({
             name: clanObj.clanname,
-            position: supporterRole.position + 7 // placing the role above the clan role
         });
+
+        clanObj.clanRole = await interaction.guild.roles.create({
+            name: clanObj.clanname,
+        });
+        
+        try {
+            // position owner role just below the bot's role.
+            await clanObj.ownerRole.setPosition(botRolePosition - 1);
+            // position clan role just below the newly positioned owner role.
+            await clanObj.clanRole.setPosition(botRolePosition - 2);
+        } catch (e) {
+            console.error("Failed to set role positions during clan creation:", e);
+            // attempt to clean up the created roles if positioning fails
+            await clanObj.ownerRole.delete().catch(() => {});
+            await clanObj.clanRole.delete().catch(() => {});
+            return await submit.editReply({
+                content: "A aparut o eroare la setarea pozitiei rolurilor. Acest lucru se intampla de obicei daca rolul bot-ului este prea jos in ierarhie. Te rog contacteaza un administrator."
+            });
+        }
+
 
         try{
             await interaction.member.roles.add(clanObj.ownerRole); // assigning the owner role
